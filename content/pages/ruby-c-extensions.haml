@@ -1,0 +1,83 @@
+Date: 13 March 2011
+Summary: An exploration of ruby C extensions and some benchmarks of a very contrived example.
+
+%h1 Ruby C Extensions
+
+:markdown
+
+    I've been interested in using C extensions with ruby for a while, so I decided to do a bit of exploration in order to see what it's actually like.  I decided first of all to put together a simple extension that does some floating point multiplication operations in C.  I threw in a loop too, so I could so some significant benchmarking after the extension actually exists.  
+    
+    ## Writing C Extensions
+    
+    Ruby is a great language, but I will admit that, at times, it can be a bit slow. Also, some things have C APIs but no ruby API yet.  What do you do if you want to deal with this? You're going to need to use C, but that doesn't mean that you'll need to work with pure C for the whole project. That's where ruby C extensions come into play. These C extensions allow you to use C alongside ruby in order to work with other codebases or drop down to C for speed. 
+    
+    My opinion on using this for optimization is pretty simple.  Write in in readable, simple ruby first, then start benchmarking it.  If it's too slow, look at your overall algorithm first. Then try optimizing in ruby.  If it's still too slow, then pull what you can out to a C extension.  And if it's still too slow, you have a problem, in that you need to drop to ASM or start throwing more hardware at it.
+    
+    So, first lets go over actually writing the C extension, then we can explore what this does for speed. Writing C extensions sounds very scary, but really isn't if you already know C. A typical C extension consists of some number of .c and .h files, and an extconf.rb file.  The extconf.rb file will handle generating a makefile which will package everything up to a format usable by ruby.
+    
+    For the purposes of this post, I have a very simple extconf.rb to show off.  This should show you the basics.  You can add conditional compilation and other fun toys in this, but that's beyond the scope of this discussion. I'll cover that if people are interested at another time. This will get all C code in the CExt folder, generate a makefile for it, and bundle it up in a .so or .bundle, depending on your OS. Then you'll be able to get at it using require_relative '/path/to/CExt/CExt'. Anyway, here's extconf.rb!
+
+= gist(868641, "extconf.rb")
+
+:markdown
+    
+    Very simple, right? Once we have some actual C code written, compiling it is going to be as easy as 'ruby extconf.rb && make'.  This will generate the makefile and compile everything in one shot.
+    
+    Getting to the C part of all this, I'll throw up some C code first, then step through and explain all of it.  Here we go!
+
+= gist(868641, 'cext.c')
+
+:markdown
+
+    This looks uglier at first than it actually is.  I'll walk through it a step at a time, then we can do some benchmarks.
+    
+    First we include the ruby header, ruby.h, to get types and methods necessary for building against ruby. If anyone doesn't know how #include works, you might want to skip down to the results, because it's only going to get worse from here on.
+    
+    Next up, on line 3 we declare a variable to store the module we're in the process of building.  Going to be boring until we get something in there, of course. Next up, we declare the methods we're going to be building later. We could do the whole method here, but I prefer doing it this way to make it a little more obvious.  In this case, we're creating two methods that return an arbitrary ruby object(the VALUE type) and take in an arbitrary ruby object referring to the calling context, called self.  Ruby will pass down self automatically, but C is a little slow, and needs to know what it's getting.  
+    
+    Now we get to a method that, if it doesn't exist, is going to break your whole extension.  There must exist a method in one of your C source files called Init_"extension name".  Since I unimaginatively called this CExt, I have Init_CExt as my method.  This is the method called first when you require the extension.  In here, we're doing a few things.  First, we're filling in that variable I said would contain the module we're building with a ruby module definition in line 9.  rb_define_module simply takes a string of the name of the module to define.  If you wanted to create a class instead, the method would simply be rb_define_class("class name", superclass).
+    
+    Next, I'm defining two singleton methods on the module, floatmul and loop_floatmul.  I'm defining these as singleton methods for simplicity, so I don't have to include the module or create a class from it.  rb_define_singleton_method takes 4 parameters. The first is the ruby module or class to add these methods to, in this case CExt.  Next you provide the name for the ruby version of the method. Then we need a function pointer so ruby knows what to actually run.  Finally, we have an integer counting the number of arguments to the function *in ruby*.  The C method will have one more, the self object, when we define it.
+    
+    Now we can move on to the actual methods I'm defining.  I've got a simple method that multiplies the double 2.0 by the double 3.0, then returns the value as a ruby float.  The C double type needs to be converted to a ruby Float, which is why we can't just return a double from this method.  rb_float_new magically generates the ruby Float we need.
+    
+    Next is the method I'll be using for benchmarking these things.  It defines some doubles, loops through 1000000 times, multiplying the floats, then returns the final value as a ruby float.  This could definitely be more interesting, but I just wanted something to chew through some time, to use for benchmarking purposes.
+    
+    So that's a C extension for ruby.  Much more simple than you would think for getting ruby to talk to C, right? Now, to see if it's worth if for performance reasons.
+    
+    ## Benchmarking Our Contrived Example
+    
+    Now these benchmarks don't necessarily mean anything, since they're not stringently conducted and just have representative results shown.  However, they demonstrate the results that are typically shown in these sorts of comparisons.  
+    
+    Using the same extension from up above, I ran comparisons 4 ways.  I implemented a pure ruby version of the loop, a ruby loop calling down to the single multiplication C method, a ruby wrapper around the C loop method, and a pure C version that just runs through the loop. I'm including the code, then I'll discuss the results a little.
+    
+= gist(868641, "pure.rb")
+= gist(868641, "mixed.rb")
+= gist(868641, "external.rb")
+= gist(868641, "pure.c")
+
+:markdown
+    
+    ### Results
+    
+    Looking at this, you would expect that the pure C and external.rb would be almost identical, then mixed would be better and pure.rb would be the worst perfomance, right? You would actually be wrong with that assumption. Also, this was run against MRI ruby 1.9.2p136 installed through RVM on a 2.4 GHz Core 2 duo Macbook Pro running OS X 10.6.6.  Enough delays, here's the results!
+
+= gist(868641, "results.sh")
+
+:markdown
+
+    Surprised at all? I hope it's not too different from your expectations! If you have everything put together right, you can run the comparisons yourself and you should get similar results. 
+    
+    Unfortunately, the overhead of calling down to C can get significant under certain circumstances.  In this case, that's what kills the mixed.rb test.  All the conversions from C doubles to ruby Floats actually causes this to be slower than equivalent ruby code.  This is definitely something to think about when you write a C extension.  Also of note is that external.rb, which just calls down to the c loop, is 2x slower than purec!  Most of this is that the ruby interpreter needs to spin up, load the CExt module, then call out to the native code.  However, note the fact that it is still approximately 8x faster than the equivalent pure ruby code.  
+    
+    I hope what you take away from this is that, yes, C extensions can really speed up certain code.  However, this does not mean that writing something in C is a silver bullet.  Look at what's really happening, speed up your algorithm, and know what different languages do best.  
+    
+    The other reason to look at a C extension is that you can use C to talk to other languages and other libraries, too.  So, for example, if you wanted to interface with Redis, and no gems existed for this, you could write your own C wrapper that speaks up to ruby.  Luckily, others have already done that work in this particular example, but other libraries exist without ruby APIs.
+    
+    ## Wrapping Up
+    
+    C extensions are definitely a very useful thing, but they aren't always the best choice.  As we saw above, writing an extension does in fact have some overhead that pure C does not have.  Another issue is redistribution of your application.  If you don't write platform-independent C code, which is not the easiest thing, you will start running into issues there.  This is one of the big issues people have with ruby on Windows.  People will break down to C without accommodating for the fact that they may not have the same resources available on all systems.  Using too much \*nix specific code means that windows people can't use your product.  
+    
+    I hope what you take away from this is that, yes, C extensions can really speed up certain code.  However, this does not mean that writing something in C is a silver bullet.  Look at what's really happening, speed up your algorithm, and know what different languages do best. And above all, don't start looking at optimizations before you know you need them!
+    
+    Finally, if you have any topics you would be interested in seeing me write about, let me know on twitter.  I'm @seburdis if you don't already follow me.  No guarantees I'll cover it immediately but I'll add it to my list of things to write about. Send me any comments you have on this to twitter, too.

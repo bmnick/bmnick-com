@@ -1,0 +1,79 @@
+Date: 3 March 2011
+Summary: Getting Nesta set up and running with RVM and unicorn isn't necessarily the easiest of things. This is how I got my setup running. Eventually I'll be adding god into the mix monitoring the unicorn master, but I'll get to that when I get it set up.
+
+%h1 Running Nesta on Amazon EC2
+
+:markdown
+
+    So I finally have my site back up and running, and I've finally trashed the old hacked-together CMS I was running. I decided to go with Nesta on this new incarnation, and I thought some people might enjoy the chance to see how to get it running. Right now, I'm serving Nesta with [Unicorn](http://unicorn.bogomips.org/) behind nginx on an Amazon EC2 server. I'm also serving up a few random other things from the server so keeping configuration modular was a goal for the configuration. I also wanted to have unicorn run on restarts, so I've got an init script for launching off unicorn. The other complication is that I like having RVM running so I can pull off another version for testing or other apps.
+
+    I won't be covering every step of the process, but I will cover the basics at least.
+
+    ## Installing RVM
+
+    RVM is pretty easy to use and install, but I'll throw the instructions in here anyway. Following the instructions [here](http://rvm.beginrescueend.com/rvm/install/) will give you the full process, but all you really need to do is run a script and update your .bashrc or .zshrc file. The shell configuration updates will come from the script once you run it.  Run the install with:
+
+= gist(853183, "rvminstall.sh")
+
+:markdown
+    ## Installing Unicorn, bundler and wrappers
+
+    First off, install a ruby interpreter, setup a gemset and install some of the gems you'll need. At least on a micro instance, this is going to be very slow. I suggest running it under a screen session in case you drop the connection. When I say very slow, I mean upwards of half an hour, at least. Skipping ri and rdoc will speed this up a lot.
+
+= gist(853183, "rvmsetup.sh")
+
+:markdown
+    Now that we have the interpreter and gems installed, we'll need to make some wrappers to get at these gems from outside of rvm. We could have gotten around this by using a system-wide install, but this works fine for me. We need wrappers for bundler and unicorn.  These are the only wrappers we need, since they're the only executables we won't be running interactively.  
+
+= gist(853183, "wrappers.sh")
+
+:markdown
+    At this point we have all the gems we need as well as a nice environment to run them under.
+
+    ## Create the Nesta project
+
+    Next step is configuring a Nesta project that we can actually serve. Here we're going to create the actual nesta project directory, as well as make a link to it in the /var/www directory. You can use whatever directory you want here, but keep track of it for later. We're also going to create a few directories that will be used later on by unicorn.
+
+= gist(853183, "createnesta.sh")
+
+:markdown
+    The nesta project will also be under git source control for an easier way to deploy changes. Skip the --git part if you choose to handle deployment in another way. You'll also need to make a config.yml file and move any content you have into the appropriate places for nesta. Once you've done that, it's time to get unicorn set up to run.
+
+    ## Configuring Unicorn
+
+    First of all, I'll show you the unicorn.rb file, then I'll explain what's going on. I have this file stored in *nesta-dir*/config/unicorn.rb but again this can be wherever you want to store it.
+
+= gist(853183, "unicorn.rb")
+
+:markdown
+    The first change you might be interested in making is the number of worker processes. This should be the number of cores/processors in your system.  I have 1 since I'm only running on a micro instance. 
+
+    If you're using a different location for your Nesta project, you'll want to change the working directory. 
+
+    You'll almost definitely want preload the app and having REE specific config won't hurt.  If you choose to switch to using REE later it should speed up a little more.
+
+    I chose to use a unix socket instead of an actual port on the server for communication.  You can also change the pid location here too, but that will need to be set in the update script too.  Finally, there's log paths, which you can change up if you like too.
+
+    ## Setting up the init script
+
+    The last backend step left is the init script.This is fairly simple, but saves you the bother of restarting unicorn if your server needs to be restarted and automates redeploys. It's mostly self-explanatory, other than changing where certain things point if you didn't follow my layout. 
+
+= gist(853183, "nestainit")
+
+:markdown
+    "service nesta start" will spawn the server, "service nesta stop" will kill it from the pid in the pid file, and "service nesta restart" will force a reload of the code. Content changes shouldn't need restarts, but if you update Nesta or do custom patches you'll need to reload it.
+
+    You'll also need to update the links for your init script, which you can do manually or with "update-rc.d nesta defaults".
+
+    ## Configuring nginx
+
+    Last step is telling nginx how to serve this to the user. I'm using sites-available and sites-enabled so I can serve multiple sites without messing with one giant config file. Throw this config file into /etc/nginx/sites-available and put a symlink to it in /etc/nginx/sites-enabled. 
+
+= gist(853183, "nesta")
+
+:markdown
+    Essentially all this is going to do is pass requests into unicorn unless they exist in the public directory of your nesta project. It knows where unicorn is running from the upstream we declare earlier on.
+
+    Finally, you just need to start everything up with your new configurations, so "service nesta start" and "service nginx restart"
+
+    Assuming everything worked out well, this should get you a running copy of nesta on your server. Now you're in the same spot as me, needing content and possibly theming.  Good luck!
