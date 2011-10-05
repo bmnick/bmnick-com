@@ -2,9 +2,18 @@ GEM
   remote: http://rubygems.org/
   specs:
     RedCloth (4.2.7)
+    addressable (2.2.6)
     haml (3.0.25)
+    heroku (2.8.4)
+      launchy (>= 0.3.2)
+      rest-client (~> 1.6.1)
+      rubyzip
+      term-ansicolor (~> 1.0.5)
+    launchy (2.0.5)
+      addressable (~> 2.2.6)
     maruku (0.6.0)
       syntax (>= 1.0.0)
+    mime-types (1.16)
     nesta (0.9.4)
       RedCloth (~> 4.2)
       haml (~> 3.0)
@@ -12,16 +21,21 @@ GEM
       shotgun (>= 0.8)
       sinatra (= 1.1.2)
     rack (1.2.1)
+    rest-client (1.6.7)
+      mime-types (>= 1.16)
+    rubyzip (0.9.4)
     shotgun (0.9)
       rack (>= 1.0)
     sinatra (1.1.2)
       rack (~> 1.1)
       tilt (~> 1.2)
     syntax (1.0.0)
+    term-ansicolor (1.0.6)
     tilt (1.2.2)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  heroku
   nesta (= 0.9.4)
