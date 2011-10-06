@@ -9,7 +9,7 @@ The count sort is an unstable sorting algorithm that operates in O(n) time by co
 
 ## The Algorithm
 
-So now that I've talked it up a bunch, I might as well explain what it actually does.  Count sort iterates over a list of integers, to find the maximum and minimum value.  After these have been determined, it creates an array sized to fit all elements.  It loops over the original list again, incrementing the value in the intermediate array at the index of the original list value.  Finally, the sorted list is reconstructed from the intermediate array and the original list and intermediate array are destroyed.  Pseudocode should make this much more easily understood
+So now that I've talked it up a bunch, I might as well explain what it actually does.  Count sort iterates over a list of integers to find the maximum and minimum value.  After these have been determined, it creates an array sized to fit all elements.  It loops over the original list again, incrementing the value in the intermediate array at the index of the original list value.  Finally, the sorted list is reconstructed from the intermediate array and the original list and intermediate array are destroyed.  Pseudocode should make this much more easily understood
 
 	def count_sort(unsorted_list)
 		min = int_max, max = int_min
@@ -38,7 +38,7 @@ One other advantage is that sometimes you just need the number of occurrences of
 
 ##The Palantir Question
 
-This question was asked to me very recently by [Palantir](http://www.palantirtech.com/) at the RIT career fair.  It was just a one off question while I was speaking to someone to get a general idea of my technical skills.  As a sidenote, the count sort let me beat their recruiters best solution time of O(N log N) with an O(2.5N) solution.  Sadly, I'm still waiting for a call from them…
+This question was asked to me very recently by [Palantir](http://www.palantirtech.com/) at the RIT career fair.  It was just a one off question while I was speaking to someone to get a general idea of my technical skills.  As a sidenote, the count sort let me beat their recruiters best solution time of O(N log N) with an O(2.5N) solution.
 
 The question was, roughly, as follows.  I am given a list of integers, each doubled, but not necessarily all numbers from 0..N.  For example, I might have gotten a list of 1, 1, 5, 5, 8, 8, 14, 14, etc.  Now, my interviewer deletes one of item from one of these pairs and shuffles the array around.  I am told to find which value he deleted.
 
@@ -46,7 +46,7 @@ As you might have guessed, in comes the count sort.  I do the standard count sor
 
 ##The Google Question
 
-This question was asked to me by [Google](http://google.com) in an on-campus interview with them last spring.  It started off as a simple algorithm to get to some solution for this problem, then moved into optimization hunting.  I'm detailing my final answer, which may be slightly incomplete. I may also make some slight errors in judgment on how I'm actually representing the question I was asked, and apologies for that.
+This question was asked to me by [Google](http://google.com) in an on-campus interview with them last spring.  It started off as a simple algorithm to get to some solution for this problem, then moved into optimization hunting.  I'm detailing my final answer, which may be slightly incomplete. I may also make some slight errors in recounting the exact details of the question.
 
 The question is slightly complicated.  You are given a collection of popsicle sticks, and told to join them together.  For each combination, you are charged the sum of the lengths.  Minimize the cost to you and do so as fast as possible.  
 
