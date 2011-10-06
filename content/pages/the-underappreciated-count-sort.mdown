@@ -1,0 +1,63 @@
+Date: 7 October 2011
+Summary: The Count Sort: An O(n) sort that manages to break so many recruiters expectations.  Here's a little discussion.
+
+#The Underappreciated Count Sort
+
+Seeing as I need to get a full time job at some point, I've started getting back into the process of having interviews.  For a software person, this means getting a lot of technical questions, usually including some basic algorithm optimization questions.  I have a secret weapon for these that too few people know about - the count sort.  
+
+The count sort is an unstable sorting algorithm that operates in O(n) time by consuming a huge amount of memory and creating a new, intermediate representation of the data.  It is primarily useful for long lists of mostly repetitive integer data over a short range of values.  As a warning, it is very inefficient with memory in certain cases, but for interview situations, this is unlikely to be important.  However, if you want to pull this algorithm out in an interview, knowing the downsides would certainly be a good idea.
+
+## The Algorithm
+
+So now that I've talked it up a bunch, I might as well explain what it actually does.  Count sort iterates over a list of integers, to find the maximum and minimum value.  After these have been determined, it creates an array sized to fit all elements.  It loops over the original list again, incrementing the value in the intermediate array at the index of the original list value.  Finally, the sorted list is reconstructed from the intermediate array and the original list and intermediate array are destroyed.  Pseudocode should make this much more easily understood
+
+	def count_sort(unsorted_list)
+		min = int_max, max = int_min
+		
+		for(element in unsorted_list)
+			if element < min
+				min = element
+			if element > max
+				max = element
+
+		counts = new Array[max-min]
+		
+		for (element in unsorted_list)
+			counts[element - min]++
+		
+		sorted_list = new list
+
+		for (int i = 0; i < counts.size; i++)
+			while counts[i] > 0
+				sorted_list.append(i + min)
+				counts[i]--
+
+The big advantage to this algorithm is that most of the time in interviews you are only asked to optimize runtime, and this is a wonderful way to do that.  Unfortunately, it's not usually as useful in real life due to the space it takes up.
+
+One other advantage is that sometimes you just need the number of occurrences of item in an array, and you can save the reconstruction step.  This was the case in both of the interview questions where the count sort really helped me to impress. I'm recounting them here to give you a look at count sort in the wild.
+
+##The Palantir Question
+
+This question was asked to me very recently by [Palantir](http://www.palantirtech.com/) at the RIT career fair.  It was just a one off question while I was speaking to someone to get a general idea of my technical skills.  As a sidenote, the count sort let me beat their recruiters best solution time of O(N log N) with an O(2.5N) solution.  Sadly, I'm still waiting for a call from them…
+
+The question was, roughly, as follows.  I am given a list of integers, each doubled, but not necessarily all numbers from 0..N.  For example, I might have gotten a list of 1, 1, 5, 5, 8, 8, 14, 14, etc.  Now, my interviewer deletes one of item from one of these pairs and shuffles the array around.  I am told to find which value he deleted.
+
+As you might have guessed, in comes the count sort.  I do the standard count sort setup, reading through the array to get the min and max and fill in the intermediate array.  Instead of recreating the original list, I simply loop over the intermediate array searching for the first element with a count of 1.  This gives me one loop to get the minimum and maximum, one to build the counts, and roughly half to loop over the counts array(assuming that the sequence is mostly full).  
+
+##The Google Question
+
+This question was asked to me by [Google](http://google.com) in an on-campus interview with them last spring.  It started off as a simple algorithm to get to some solution for this problem, then moved into optimization hunting.  I'm detailing my final answer, which may be slightly incomplete. I may also make some slight errors in judgment on how I'm actually representing the question I was asked, and apologies for that.
+
+The question is slightly complicated.  You are given a collection of popsicle sticks, and told to join them together.  For each combination, you are charged the sum of the lengths.  Minimize the cost to you and do so as fast as possible.  
+
+The solution to the first problem took some time to work out, but it boils down to "join the 2 smallest available sticks first".  This means we need something sorted, and we need something that has a fast sorted instertion time(we need to keep joining the parts we already have). Additionally, I was told to use a magical data structure that was like an array for random access, but dynamically resized itself like a linked list.  I'm not really one to look a gift horse in the mouth, so…
+
+First thing for the solution - you need to build your count array.  Since we have that magical data structure, you don't even need to get the min and max, so that's one less iteration over the list.  Now that we have that intermediate built up, we can start iterating over it joining things together.  To do this, I stepped through the array, decrementing the first 2 values I found, adding them, adding that value to the accumulated cost, and then incrementing the count at the sum.  I then started from where I was in the array and stepped forward, doing the whole thing over again. 
+
+Unfortunately, in the situation where I was given 2 popsicle sticks, of length 1 and 1000000, this is a horribly inefficient implementation.  However, in the average case with mostly small values, it is one of the most efficient solutions available.
+
+##Conclusion
+
+The count sort is a rarely mentioned algorithm in most classes, at least here at RIT.  There are good reasons for that, but when you need a sort that is very very fast and you don't need to worry about the memory usage, the count sort is a great solution.  
+
+Of course, now that I've let the secret out, I'll have to start finding other ways to be unusually successful at algorithm interviews...
